@@ -10,7 +10,9 @@ const responseSchema = Joi.object({
 
 const get = async (req, res, next) => {
   try {
-    const results = await service.getContacts();
+    const { query, user } = req;
+    const results = await service.getContacts({ ...query, owner: user._id });
+
     res.json({
       status: "success",
       code: 200,
@@ -25,9 +27,10 @@ const get = async (req, res, next) => {
 };
 
 const getById = async (req, res, next) => {
-  const { contactId } = req.params;
+  const { params, user } = req;
+  const { contactId } = params;
   try {
-    const result = await service.getContactById(contactId);
+    const result = await service.getContactById(contactId, user._id);
     if (result) {
       res.json({
         status: "success",
@@ -38,7 +41,7 @@ const getById = async (req, res, next) => {
       res.status(404).json({
         status: "error",
         code: 404,
-        message: `Not found contact id: ${id}`,
+        message: `Not found contact id: ${contactId}`,
         data: "Not Found",
       });
     }
@@ -49,13 +52,14 @@ const getById = async (req, res, next) => {
 };
 
 const create = async (req, res, next) => {
-  const body = req.body;
+  const { body, user } = req;
+
   try {
     const value = await responseSchema.validate(req.body);
     if (value.error) {
-      res.send(400).json({ error: error.message });
+      return res.send(400).json({ error: error.message });
     }
-    const result = await service.addContact(body);
+    const result = await service.addContact({ ...body, owner: user._id });
     res.json({
       status: "success",
       code: 200,
@@ -74,8 +78,8 @@ const update = async (req, res, next) => {
       res.send(400).json({ error: error.message });
     }
     const { contactId } = req.params;
-    const { body } = req;
-    const results = await service.updateContact(contactId, body);
+    const { body, user } = req;
+    const results = await service.updateContact(contactId, user._id, body);
     if (body) {
       res.json({
         status: "success",
@@ -99,9 +103,12 @@ const update = async (req, res, next) => {
 
 const updateFav = async (req, res, next) => {
   try {
+    const { user } = req;
     const { contactId } = req.params;
     const { favorite = false } = req.body;
-    const results = await service.updateFavorite(contactId, { favorite });
+    const results = await service.updateFavorite(contactId, user._id, {
+      favorite,
+    });
     if (results) {
       res.json({
         status: "success",
@@ -125,8 +132,9 @@ const updateFav = async (req, res, next) => {
 
 const remove = async (req, res, next) => {
   try {
+    const { user } = req;
     const { contactId } = req.params;
-    const result = await service.removeContact(contactId);
+    const result = await service.removeContact(contactId, user._id);
     if (result) {
       res.json({
         status: "success",
