@@ -1,6 +1,10 @@
 const express = require("express");
 const cors = require("cors");
+const fs = require("fs").promises;
 const mongoose = require("mongoose");
+
+const routerApi = require("./routes/api/contacts");
+const routerAuth = require("./routes/api/auth");
 
 require("dotenv").config();
 
@@ -17,9 +21,6 @@ const connection = mongoose.connect(uriDb, {
   useUnifiedTopology: true,
 });
 require("./config/passport");
-
-const routerApi = require("./routes/api/contacts");
-const routerAuth = require("./routes/api/auth");
 
 app.use("/api/contacts", routerApi);
 app.use("/api/contacts/users", routerAuth);
@@ -45,8 +46,9 @@ app.use((err, _, res, __) => {
 
 connection
   .then(() => {
-    app.listen(PORT, function () {
-      console.log("Database connection successful");
+    console.log("Database connection successful");
+    app.listen(PORT, async () => {
+      console.log(`App listens on port ${PORT}`);
     });
   })
   .catch((err) =>

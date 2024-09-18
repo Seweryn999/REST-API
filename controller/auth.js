@@ -1,16 +1,24 @@
 const User = require("../service/schema/user");
 const jwt = require("jsonwebtoken");
 const Joi = require("joi");
+const gravatar = require("gravatar");
+const Jimp = require("jimp");
+const path = require("node:path");
+const upload = require("../middlewares/upload");
+const fs = require("fs").promises;
 
 const responseSchema = Joi.object({
-  password: Joi.string().required(),
   email: Joi.string().email().required(),
+  password: Joi.string().required(),
 });
 
 const login = async (req, res) => {
   const value = await responseSchema.validate(req.body);
   if (value.error) {
-    return res.send(400).json({ error: error.message });
+    return res.json({
+      message: value.error.message,
+      status: 400,
+    });
   }
 
   const { email, password } = req.body;
@@ -47,7 +55,10 @@ const login = async (req, res) => {
 const signup = async (req, res, next) => {
   const value = await responseSchema.validate(req.body);
   if (value.error) {
-    return res.send(400).json({ error: error.message });
+    return res.json({
+      message: value.error.message,
+      status: 400,
+    });
   }
 
   const { email, password } = req.body;
@@ -63,6 +74,11 @@ const signup = async (req, res, next) => {
   try {
     const newUser = new User({ email });
     newUser.setPassword(password);
+    const avatarURL = gravatar.url(newUser.email, {
+      protocol: "https",
+      s: "100",
+    });
+    newUser.avatarURL = avatarURL;
     await newUser.save();
     return res.status(201).json({
       status: "success",
@@ -120,7 +136,58 @@ const currentUser = async (req, res, next) => {
       ResponseBody: {
         email: user.email,
         subscription: user.subscription,
-        token: user.token,
+        avatar: user.avatarURL,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const uploadAvatar = async (req, res, next) => {
+  try {
+    const { _id } = req.user;
+    const user = await User.findOne({ _id });
+    if (!user) {
+      return res.status(401).json({
+        status: "error",
+        code: 401,
+        ResponseBody: {
+          message: "Unauthorized",
+        },
+      });
+    }
+
+    const file = req.file;
+    if (!file)
+      return res
+        .status(400)
+        .json({ status: false, code: 400, message: "Missing file" });
+
+    const avatarPath = file.path;
+    Jimp.read(avatarPath)
+      .then((image) => {
+        return image.resize(250, 250);
+      })
+      .catch((error) => console.log(error));
+
+    const now = new Date();
+    const newAvatarName = `${now.getTime()}_${user._id}_${file.originalname}`;
+    const destinationPath = path.join(upload.storeImageDir, newAvatarName);
+    try {
+      await fs.rename(avatarPath, destinationPath);
+    } catch (error) {
+      await fs.unlink(avatarPath);
+      return next(error);
+    }
+
+    user.avatarURL = `/avatars/${newAvatarName}`;
+    await user.save();
+    return res.status(200).json({
+      success: true,
+      message: "Avatar uploaded successfully",
+      ResponseBody: {
+        avatarURL: user.avatarURL,
       },
     });
   } catch (error) {
@@ -133,4 +200,5 @@ module.exports = {
   signup,
   logout,
   currentUser,
+  uploadAvatar,
 };
