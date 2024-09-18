@@ -57,7 +57,10 @@ const create = async (req, res, next) => {
   try {
     const value = await responseSchema.validate(req.body);
     if (value.error) {
-      return res.send(400).json({ error: error.message });
+      return res.json({
+        message: value.error.message,
+        status: 400,
+      });
     }
     const result = await service.addContact({ ...body, owner: user._id });
     res.json({
@@ -75,7 +78,10 @@ const update = async (req, res, next) => {
   try {
     const value = await responseSchema.validate(req.body);
     if (value.error) {
-      res.send(400).json({ error: error.message });
+      return res.json({
+        message: value.error.message,
+        status: 400,
+      });
     }
     const { contactId } = req.params;
     const { body, user } = req;
