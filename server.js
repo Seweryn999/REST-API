@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 
 const routerApi = require("./routes/api/contacts");
 const routerAuth = require("./routes/api/auth");
+const routerVerify = require("./routes/api/verify");
 
 require("dotenv").config();
 
@@ -23,7 +24,7 @@ const connection = mongoose.connect(uriDb, {
 require("./config/passport");
 
 app.use("/api/contacts", routerApi);
-app.use("/api/contacts/users", routerAuth);
+app.use("/api/contacts/users", routerAuth, routerVerify);
 
 app.use((_, res, __) => {
   res.status(404).json({

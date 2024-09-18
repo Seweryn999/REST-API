@@ -6,6 +6,8 @@ const Jimp = require("jimp");
 const path = require("node:path");
 const upload = require("../middlewares/upload");
 const fs = require("fs").promises;
+const { generateVerifyToken } = require("../config/verify");
+const { sendVerificationEmail } = require("../config/verify");
 
 const responseSchema = Joi.object({
   email: Joi.string().email().required(),
@@ -79,6 +81,10 @@ const signup = async (req, res, next) => {
       s: "100",
     });
     newUser.avatarURL = avatarURL;
+    const verifyToken = generateVerifyToken();
+    newUser.verificationToken = verifyToken;
+    sendVerificationEmail(email, verifyToken);
+
     await newUser.save();
     return res.status(201).json({
       status: "success",
@@ -137,6 +143,8 @@ const currentUser = async (req, res, next) => {
         email: user.email,
         subscription: user.subscription,
         avatar: user.avatarURL,
+        verify: user.verify,
+        verificationToken: user.verificationToken,
       },
     });
   } catch (error) {
